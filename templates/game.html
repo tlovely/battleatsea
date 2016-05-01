@@ -8,11 +8,15 @@
     </style>
 
     <script src="/static/phaser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
 
     <script>
 
+      var socket = io('/game');
+
       var con;
       var changed;
+      var gameId;
 
       var ships = [];
       var shipgroup;
@@ -42,30 +46,24 @@
         game.load.spritesheet('ship', '/static/ships.png', 32, 32);
         game.load.spritesheet('explosion', '/static/explosion.png', 128, 128);
 
-        function setup() {
-          con = new WebSocket("ws://"+location.host+"/players");
+        socket.on('game init', function(id) {
+          gameId = id;
+        });
 
-          con.onmessage = function(data) {
-            var player = JSON.parse(data.data);
-            console.log(player);
-            if (!player) {
-              // pass
-            } else if (!ships[player.id]) {
-              ships[player.id] = new Ship(player.name, player.color, game, shipgroup);
-            } else if (player.remove) {
-              ships[player.id].remove();
-              delete ships[player.id];
-            } else if (player.direction === "fire") {
-              ships[player.id].fireCanon = true;
-            } else {
-              ships[player.id].direction = player.direction;
-            }
-          };
+        socket.on('player init', function(player) {
+          ships[player.id] = new Ship(player.name, player.color, game, shipgroup);
+        });
 
-          con.onclose = function(message) { setup(); };
-        }
-
-        setup();
+        socket.on('action', function(player) {
+          console.log(player);
+          if (player.direction === undefined) {
+            // pass
+          } else if (player.direction === "fire") {
+            ships[player.id].fireCanon = true;
+          } else {
+            ships[player.id].direction = player.direction;
+          }
+        });
 
       };
 
@@ -76,32 +74,32 @@
         canonballs.enableBody = true;
         canonballs.physicsBodyType = Phaser.Physics.ARCADE;
 
+        var gameIdLabel = game.add.text(50, 50, gameId, { fontSize: '25px', fill: '#fff' });
+
         for (var i = 0; i < 20; i++) {
-            var b = canonballs.create(0, 0, 'canonball');
-            b.name = 'canonball' + i;
-            b.exists = false;
-            b.visible = false;
-            b.checkWorldBounds = true;
-            b.events.onOutOfBounds.add(function(canonball) {
-              canonball.kill();
-            }, this);
+          var b = canonballs.create(0, 0, 'canonball');
+          b.name = 'canonball' + i;
+          b.exists = false;
+          b.visible = false;
+          b.checkWorldBounds = true;
+          b.events.onOutOfBounds.add(function(canonball) {
+            canonball.kill();
+          }, this);
         }
-
-
       };
 
       function update() {
 
         game.physics.arcade.overlap(canonballs, shipgroup, function(canonball, ship) {
-            canonball.kill();
-            Object.keys(ships).forEach(function(id) {
-              var s = ships[id];
-              console.log(ship, s._object);
-              if (ship === s._object) {
-                canonball.attacker.incScore();
-                s.exploding = true;
-              }
-            });
+          canonball.kill();
+          Object.keys(ships).forEach(function(id) {
+            var s = ships[id];
+            console.log(ship, s._object);
+            if (ship === s._object) {
+              canonball.attacker.incScore();
+              s.exploding = true;
+            }
+          });
         }, null, this);
 
         // Animates ocean.
@@ -267,6 +265,7 @@
         explosion.visible = false;
         var explodeInc = 10;
         var explodeTime = 0;
+
         this.explode = function() {
             if (explodeInc == 10) {
               explosion.reset(ship.x - 50, ship.y - 50);

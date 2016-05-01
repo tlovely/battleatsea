@@ -8,6 +8,7 @@
         return check;
       };
     </script>
+    <script src="/socket.io/socket.io.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
       * { margin: 0; padding: 0; }
@@ -122,52 +123,45 @@
 
     <script>
 
+      var socket = io('/controller');
+
       var login = document.getElementById("login");
       var controls = document.getElementById("controls");
 
       login.onclick = function() {
         login.style.display = "none";
         controls.style.display = "initial";
-        // controls.webkitRequestFullScreen();
 
-        var con;
-        function setup() {
-          con = new WebSocket("ws://"+location.host+"/controller");
-          con.onclose = function(message) { setup(); };
-        }
-        setup();
+        socket.emit('init', {
+          'name': new Date().getTime(),
+          'color': "white",
+          'gameId': location.hash.slice(2)
+        });
 
-        con.onopen = function() {
+        ['up', 'down', 'left', 'right', 'fire'].forEach(function(d) {
+          var dir = document.getElementById(d);
+          var classes = dir.className;
+          if (mobilecheck()) {
+            dir.addEventListener('touchstart', function() {
+              socket.emit('action', { direction: d });
+              dir.className = classes + " pressed";
+            });
+            dir.addEventListener('touchend', function() {
+              socket.emit('action', { direction: '' });
+              dir.className = classes;
+            });
+          } else {
+            dir.onmousedown = function() {
+              socket.emit('action', { direction: d });
+              dir.className = classes + " pressed";
+            };
+            dir.onmouseup = function() {
+              socket.emit('action', { direction: '' });
+              dir.className = classes;
+            };
+          }
+        });
 
-          con.send(JSON.stringify({
-            'name': new Date().getTime(),
-            'color': "white"
-          }));
-
-          ['up', 'down', 'left', 'right', 'fire'].forEach(function(d) {
-            var dir = document.getElementById(d);
-            var classes = dir.className;
-            if (mobilecheck()) {
-              dir.addEventListener('touchstart', function() {
-                con.send(JSON.stringify({ direction: d }));
-                dir.className = classes + " pressed";
-              });
-              dir.addEventListener('touchend', function() {
-                con.send(JSON.stringify({ direction: '' }));
-                dir.className = classes;
-              });
-            } else {
-              dir.onmousedown = function() {
-                con.send(JSON.stringify({ direction: d }));
-                dir.className = classes + " pressed";
-              };
-              dir.onmouseup = function() {
-                con.send(JSON.stringify({ direction: '' }));
-                dir.className = classes;
-              };
-            }
-          });
-        };
       };
 
     </script>

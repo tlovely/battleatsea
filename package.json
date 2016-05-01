@@ -1,0 +1,25 @@
+{
+  "name": "battleatsea",
+  "version": "0.1.0",
+  "description": "Online open sea ship battles.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tlovely/battleatsea.git"
+  },
+  "author": "Tyler Lovely",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tlovely/battleatsea/issues"
+  },
+  "homepage": "https://github.com/tlovely/battleatsea",
+  "dependencies": {
+    "async": "^2.0.0-rc.3",
+    "express": "^4.13.4",
+    "socket.io": "^1.4.5",
+    "websockets": "^0.2.0"
+  }
+}
