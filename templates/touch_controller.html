@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>@import url('/static/css/controller.css');</style>
+  </head>
+  <body>
+    <div class="page" id="player-setup">
+      <h3>Battle at Sea | Player Setup</h3>
+      <div>
+        <input type="text" name="name" placeholder="Name">
+      </div>
+      <div>
+        <select name="color">
+          <option value="white">White</option>
+          <option value="gray">Gray</option>
+          <option value="black">Black</option>
+          <option value="red">Red</option>
+          <option value="blue">Blue</option>
+          <option value="yellow">Yellow</option>
+          <option value="green">Green</option>
+          <option value="stripe">Stripe</option>
+        </select>
+      </div>
+      <div>
+        <select name="game">
+        </select>
+      </div>
+      <div>
+        <button onclick="join();">Join</button>
+      </div>
+    </div>
+
+    <div class="page" id="controller">
+      <div id="joystick">
+      </div>
+      <div id="label">
+        <span id="name">Tyler</span> | Touch Controller
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/static/js/joystick.js"></script>
+    <script src="/static/js/controller.js"></script>
+
+  </body>
+</html>
