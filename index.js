@@ -1,8 +1,13 @@
+var async = require('async');
 var express = require('express');
+var morgan = require('morgan');
 var WebSocket = require('ws');
 var r = require('rethinkdb');
 
 var app = express();
+
+// Apache style request / response logging.
+app.use(morgan('combined'));
 
 var genId = require('gen-id')('xxxxx')
 var http = require('http').Server(app);
@@ -10,78 +15,123 @@ var io = require('socket.io')(http);
 var controller = io.of('/controller');
 var game = io.of('/game');
 
-const PORT = 3000;
+const PORT = 80;
 
-r.connect({ db: 'bas' }).then(function(con) {
+var con;
+var gameIDs = [];
 
-  app.use('/static', express.static('static'));
-
-  app.get('/', function(req, res, next) {
-    res.sendFile('templates/index.html', { root: __dirname });
-  });
-
-  app.get('/controller', function(req, res, next) {
-    res.sendFile('templates/controller.html', { root: __dirname });
-  });
-
-  app.get('/game', function(req, res, next) {
-    res.sendFile('templates/game.html', { root: __dirname });
-  });
-
-  controller.on('connection', function(socket) {
-    var id;
-    socket.on('action', function(action) {
-      r.table('players').get(id).update(action).run(con);
+async.series([
+  function(next) {
+    r.connect({ host: 'localhost', db: 'battleatsea' }).then(function(_con) {
+      console.log('CONNECTED: RethinkDB');
+      con = _con;
+      next();
+    }).catch(function(err) {
+      next(err);
     });
-    socket.on('init', function(player) {
-      r.table('players').insert(player).run(con, function(err, res) {
-        id = res.generated_keys[0];
-      });
+  },
+  function(next) {
+    r.db('battleatsea').table('players').delete().run(con, function(err, cur) {
+      next(err);
     });
-    socket.on('close', function() {
-      r.table('players').get(id).remove().run(con);
-    });
-  });
+  },
+  function(next) {
 
-  var games = [];
+    app.use('/static', express.static('static'));
 
-  game.on('connection', function(socket) {
-    var playersInit = [];
-
-    // 'gameId' identifies this instance
-    var gameId = (function() {
-      while (true) {
-        var gameId = genId.generate();
-        if (games.indexOf(gameId) - 1) {
-          games.push(gameId);
-          socket.emit('game init', gameId);
-          console.log(gameId);
-          return gameId;
-        }
-      }
-    })();
-
-    r.table('players').filter({ gameId: gameId }).changes().run(con, function(err, cursor) {
-      cursor.each(function(err, player) {
-        player = player.new_val;
-        if (player.direction !== undefined) {
-          socket.emit('action', { id: player.id, direction: player.direction });
-        } else {
-          socket.emit('player init', player);
-        }
-      });
+    app.get('/', function(req, res) {
+      res.sendFile('templates/index.html', { root: __dirname });
     });
 
-    socket.on('close', function() {
-      r.table('players').filter({ gameId: gameId }).delete().run(con, function(err, res) {
-        games = games.filter(function(g) {
-          return g !== gameId;
+    app.get('/controller', function(req, res) {
+      res.sendFile('templates/touch_controller.html', { root: __dirname });
+    });
+
+    app.get('/game', function(req, res) {
+      res.sendFile('templates/game.html', { root: __dirname });
+    });
+
+    app.get('/games', function(req, res) {
+      res.json(gameIDs);
+    });
+
+    controller.on('connection', function(socket) {
+      var id;
+      ['up', 'right', 'down', 'left', 'fire', 'stop'].forEach(function(action) {
+        socket.on(action, function() {
+          r.table('players').get(id).update({
+            direction: action !== 'stop' ? action : ''
+          }).run(con);
         });
       });
+      // Happens once per connection.
+      socket.on('init', function(player) {
+        r.table('players').insert(player).run(con, function(err, res) {
+          id = res.generated_keys[0];
+        });
+      });
+      socket.on('get games available', function() {
+        console.log(gameIDs);
+        socket.emit('games available', gameIDs);
+      });
+      socket.on('close', function() {
+        r.table('players').get(id).remove().run(con);
+      });
     });
 
-  });
+    // The /game page connects to this websocket in order to recieve controller
+    // events.
+    game.on('connection', function(socket) {
+      var playersInit = [];
 
-  http.listen(PORT);
+      // 'gameId' identifies this game session. This code insures that the
+      // gameId is unique.
+      var gameId = (function() {
+        while (true) {
+          var _gameId = genId.generate();
+          // If 'indexOf' returns -1, then -1 + 1 === 0 (falsy); id unused.
+          if (!Boolean(gameIDs.indexOf(_gameId) + 1)) {
+            gameIDs.push(_gameId);
+            socket.emit('game init', _gameId);
+            return _gameId;
+          }
+        }
+      })();
 
+      // Subscribes to all changes to players table that
+      r.table('players').filter({ gameId: gameId }).changes().run(con, function(err, cursor) {
+        cursor.each(function(err, player) {
+          player = player.new_val;
+          if (player.direction !== undefined) {
+            var action = player.direction !== '' ? player.direction : 'stop';
+            socket.emit(action, player.id);
+          } else {
+            socket.emit('player init', player);
+          }
+        });
+      });
+
+      socket.on('close', function() {
+        // TODO: Fix. Not doing anything.
+        r.table('players').filter({ gameId: gameId }).delete().run(con, function(err, res) {
+          // games = games.filter(function(g) {
+          //   return g !== gameId;
+          // });
+        });
+      });
+
+    });
+
+    http.listen(PORT);
+
+    next();
+
+  }
+], function(err) {
+  if (err) {
+    console.error(
+      'Darn! The server failed to start. Well ... here\'s the error:',
+      err
+    );
+  }
 });

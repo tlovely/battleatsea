@@ -17,9 +17,13 @@
   },
   "homepage": "https://github.com/tlovely/battleatsea",
   "dependencies": {
-    "async": "^2.0.0-rc.3",
+    "async": "^2.0.0-rc.6",
     "express": "^4.13.4",
+    "gen-id": "^0.1.1",
+    "morgan": "^1.7.0",
+    "rethinkdb": "2.2.3",
     "socket.io": "^1.4.5",
-    "websockets": "^0.2.0"
+    "websockets": "^0.2.0",
+    "ws": "^1.1.0"
   }
 }
