@@ -47,6 +47,10 @@ async.series([
       res.sendFile('templates/touch_controller.html', { root: __dirname });
     });
 
+    app.get('/game/closed', function(req, res) {
+      res.sendFile('templates/game_closed.html', { root: __dirname });
+    });
+
     app.get('/game', function(req, res) {
       res.sendFile('templates/game.html', { root: __dirname });
     });
@@ -56,24 +60,39 @@ async.series([
     });
 
     controller.on('connection', function(socket) {
+      // Player id,
       var id;
+      // Happens once per connection. Creates player and saves id.
+      socket.on('init', function(player) {
+        r.table('players').insert(player).run(con, function(err, res) {
+          id = res.generated_keys[0];
+          // Watches for existence of game record. If removed on game
+          // disconnect from server, then sends 'game closed' event to
+          // controller clients attached to that game.
+          r.db('battleatsea').table('players').filter({ id: id }).pluck('id').changes().run(con, function(err, cur) {
+            cur.each(function(player) {
+              if (player === null) {
+                socket.emit('game closed');
+              }
+            })
+          });
+        });
+      });
+      // All player action events.
       ['up', 'right', 'down', 'left', 'fire', 'stop'].forEach(function(action) {
         socket.on(action, function() {
+          console.log(action);
           r.table('players').get(id).update({
             direction: action !== 'stop' ? action : ''
           }).run(con);
         });
       });
-      // Happens once per connection.
-      socket.on('init', function(player) {
-        r.table('players').insert(player).run(con, function(err, res) {
-          id = res.generated_keys[0];
-        });
-      });
+      // Event for requesting available games.
       socket.on('get games available', function() {
         console.log(gameIDs);
         socket.emit('games available', gameIDs);
       });
+      // Deletes player object.
       socket.on('close', function() {
         r.table('players').get(id).remove().run(con);
       });
@@ -91,6 +110,7 @@ async.series([
           var _gameId = genId.generate();
           // If 'indexOf' returns -1, then -1 + 1 === 0 (falsy); id unused.
           if (!Boolean(gameIDs.indexOf(_gameId) + 1)) {
+            console.log(gameIDs);
             gameIDs.push(_gameId);
             socket.emit('game init', _gameId);
             return _gameId;
@@ -102,7 +122,9 @@ async.series([
       r.table('players').filter({ gameId: gameId }).changes().run(con, function(err, cursor) {
         cursor.each(function(err, player) {
           player = player.new_val;
-          if (player.direction !== undefined) {
+          if (player === null) {
+            // pass
+          } else if (player.direction !== undefined) {
             var action = player.direction !== '' ? player.direction : 'stop';
             socket.emit(action, player.id);
           } else {
@@ -111,12 +133,17 @@ async.series([
         });
       });
 
-      socket.on('close', function() {
+      socket.on('disconnect', function() {
+        console.log('disconnect');
         // TODO: Fix. Not doing anything.
         r.table('players').filter({ gameId: gameId }).delete().run(con, function(err, res) {
-          // games = games.filter(function(g) {
-          //   return g !== gameId;
-          // });
+          var newGameIDs = [];
+          // Removes gameID from gameIDs list.
+          gameIDs.forEach(function(_gameID) {
+            if (_gameID !== gameId) newGameIDs.push(_gameID);
+            return newGameIDs;
+          });
+          gameIDs = newGameIDs;
         });
       });
 

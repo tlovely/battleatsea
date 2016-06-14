@@ -37,6 +37,10 @@ socket.on('games available', function(games) {
   selectGame.innerHTML = html.join('\n');
 });
 
+socket.on('game closed', function() {
+  location.href = "/game/closed";
+});
+
 socket.emit('get games available');
 
 join = function() {
