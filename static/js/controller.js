@@ -10,20 +10,20 @@ var shipColor = document.getElementsByName('color')[0];
 var playerName = document.getElementsByName('name')[0];
 var name = document.getElementById('name');
 
-(function() {
-  var handler = function() {
-    console.log('here');
-    // Not in full screen.
-    if (window.innerHeight !== screen.height) {
-      console.log('reload');
-      location.reload();
-    }
-  };
-  document.addEventListener("fullscreenchange", handler);
-  document.addEventListener("webkitfullscreenchange", handler);
-  document.addEventListener("mozfullscreenchange", handler);
-  document.addEventListener("MSFullscreenChange", handler);
-})();
+// (function() {
+//   var handler = function() {
+//     console.log('here');
+//     // Not in full screen.
+//     if (window.innerHeight !== screen.height) {
+//       console.log('reload');
+//       location.reload();
+//     }
+//   };
+//   document.addEventListener("fullscreenchange", handler);
+//   document.addEventListener("webkitfullscreenchange", handler);
+//   document.addEventListener("mozfullscreenchange", handler);
+//   document.addEventListener("MSFullscreenChange", handler);
+// })();
 
 // Function for requesting full screen across all popular browsers.
 var requestFullscreen = function(e) {
