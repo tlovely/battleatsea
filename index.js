@@ -96,6 +96,9 @@ async.series([
           r.table('players').get(id).delete().run(con);
         }
       });
+      socket.on('error', function(err) {
+        console.log(err);
+      });
     });
 
     // The /game page connects to this websocket in order to recieve controller
@@ -147,6 +150,10 @@ async.series([
           });
           gameIDs = newGameIDs;
         });
+      });
+
+      socket.on('error', function(err) {
+        console.log(err);
       });
 
     });

@@ -66,7 +66,7 @@ function create() {
   gameIdLabel = game.add.text(width - 150, 50, gameId, { fontSize: '25px', fill: '#fff' });
   gameIdLabel.alpha = 0.75;
 
-  for (var i = 0; i < 20; i++) {
+  for (var i = 0; i < 50; i++) {
     var b = canonballs.create(0, 0, 'canonball');
     b.name = 'canonball' + i;
     b.exists = false;
