@@ -197,7 +197,7 @@ function Ship(_name, color, game, shipgroup) {
     up: { velocity: -(velocity), axis: 'y' }
   };
 
-  var lastDirection;
+  var lastDirection = 'down';
   this.move = function(direction) {
     //  Reset the ships velocity (movement)
     ship.body.velocity.x = 0;

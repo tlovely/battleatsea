@@ -2,6 +2,7 @@ var join;
 
 (function() {
 
+// Controller's connection to the server.
 var socket = io('/controller');
 
 var selectGame = document.getElementsByName('game')[0];
@@ -9,6 +10,22 @@ var shipColor = document.getElementsByName('color')[0];
 var playerName = document.getElementsByName('name')[0];
 var name = document.getElementById('name');
 
+(function() {
+  var handler = function() {
+    console.log('here');
+    // Not in full screen.
+    if (window.innerHeight !== screen.height) {
+      console.log('reload');
+      location.reload();
+    }
+  };
+  document.addEventListener("fullscreenchange", handler);
+  document.addEventListener("webkitfullscreenchange", handler);
+  document.addEventListener("mozfullscreenchange", handler);
+  document.addEventListener("MSFullscreenChange", handler);
+})();
+
+// Function for requesting full screen across all popular browsers.
 var requestFullscreen = function(e) {
   // go full-screen
   if (e.requestFullscreen) {
@@ -20,13 +37,6 @@ var requestFullscreen = function(e) {
   } else if (e.msRequestFullscreen) {
     e.msRequestFullscreen();
   }
-};
-
-var exitFullscreenHandler = function(handler) {
-  document.addEventListener("fullscreenchange", handler);
-  document.addEventListener("webkitfullscreenchange", handler);
-  document.addEventListener("mozfullscreenchange", handler);
-  document.addEventListener("MSFullscreenChange", handler);
 };
 
 socket.on('games available', function(games) {
