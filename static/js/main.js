@@ -3,6 +3,7 @@ var socket = io('/game');
 var con;
 var changed;
 var gameId;
+var repositionScores = false;
 
 var ships = [];
 var shipgroup;
@@ -40,6 +41,12 @@ function preload() {
     ships[player.id] = new Ship(player.name, player.color, game, shipgroup);
   });
 
+  socket.on('player remove', function(id) {
+    ships[id].remove();
+    delete ships[id];
+    repositionScores = true;
+  });
+
   socket.on('up', function(id) { ships[id].direction = 'up'; });
   socket.on('right', function(id) { ships[id].direction = 'right'; });
   socket.on('down', function(id) { ships[id].direction = 'down'; });
@@ -56,7 +63,8 @@ function create() {
   canonballs.enableBody = true;
   canonballs.physicsBodyType = Phaser.Physics.ARCADE;
 
-  var gameIdLabel = game.add.text(50, 50, gameId, { fontSize: '25px', fill: '#fff' });
+  gameIdLabel = game.add.text(width - 150, 50, gameId, { fontSize: '25px', fill: '#fff' });
+  gameIdLabel.alpha = 0.75;
 
   for (var i = 0; i < 20; i++) {
     var b = canonballs.create(0, 0, 'canonball');
@@ -68,9 +76,18 @@ function create() {
       canonball.kill();
     }, this);
   }
+
 };
 
 function update() {
+
+  if (repositionScores) {
+    Object.keys(ships).forEach(function(id, i) {
+      var ship = ships[id];
+      ship.repositionScore(i);
+    });
+    repositionScores = false;
+  }
 
   game.physics.arcade.overlap(canonballs, shipgroup, function(canonball, ship) {
     canonball.kill();
@@ -108,11 +125,12 @@ function update() {
 
 };
 
-function Ship(name, color, game, shipgroup) {
+function Ship(_name, color, game, shipgroup) {
   var that = this;
 
   that.exploding = false;
   var canonTime = 0;
+  var score;
   var start_x = game.rnd.integerInRange(100, width - 100);
   var start_y = game.rnd.integerInRange(100, height - 100);
 
@@ -151,16 +169,25 @@ function Ship(name, color, game, shipgroup) {
   ship.animations.add('up', [s+36, s+37, s+38], 10, true);
   ship.animations.play('down');
 
-  cursors = game.input.keyboard.createCursorKeys();
+  // cursors = game.input.keyboard.createCursorKeys();
 
-  var score = game.add.text(
-    16,
-    ((16 * (Object.keys(ships).length + 1)) * 1.5),
-    name + ': 0',
-    { fontSize: '25px', fill: c }
-  );
+  this.repositionScore = function(m, s) {
+    score && score.destroy();
+    score = game.add.text(
+      16,
+      ((20 * (m + 1)) * 1.5),
+      _name + ': ' + (s ? s : (score ? score.text.split(": ")[1] : 0)),
+      { fontSize: '25px', fill: c }
+    );
+    score.alpha = 0.75;
+  };
 
-  var name = game.add.text(start_x, start_y - 20, name, { fontSize: '15px', fill: c });
+  // Next tick.
+  //setTimeout(function() {
+  this.repositionScore(Object.keys(ships).length, 0);
+  //}, 0);
+
+  var name = game.add.text(start_x, start_y - 20, _name, { fontSize: '15px', fill: c });
 
   var velocity = 200;
   var move = {
@@ -225,8 +252,8 @@ function Ship(name, color, game, shipgroup) {
 
   this.remove = function() {
     ship.kill();
-    that.score.kill();
-    name.kill();
+    score.destroy();
+    name.destroy();
   };
 
   this.sink = function() {

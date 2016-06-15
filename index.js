@@ -81,7 +81,6 @@ async.series([
       // All player action events.
       ['up', 'right', 'down', 'left', 'fire', 'stop'].forEach(function(action) {
         socket.on(action, function() {
-          console.log(action);
           r.table('players').get(id).update({
             direction: action !== 'stop' ? action : ''
           }).run(con);
@@ -89,12 +88,13 @@ async.series([
       });
       // Event for requesting available games.
       socket.on('get games available', function() {
-        console.log(gameIDs);
         socket.emit('games available', gameIDs);
       });
       // Deletes player object.
-      socket.on('close', function() {
-        r.table('players').get(id).remove().run(con);
+      socket.on('disconnect', function() {
+        if (id) {
+          r.table('players').get(id).delete().run(con);
+        }
       });
     });
 
@@ -120,10 +120,12 @@ async.series([
 
       // Subscribes to all changes to players table that
       r.table('players').filter({ gameId: gameId }).changes().run(con, function(err, cursor) {
-        cursor.each(function(err, player) {
-          player = player.new_val;
+        cursor.each(function(err, _player) {
+          player = _player.new_val;
           if (player === null) {
-            // pass
+            if (_player.old_val && typeof(_player.old_val) === 'object') {
+              socket.emit('player remove', _player.old_val.id);
+            }
           } else if (player.direction !== undefined) {
             var action = player.direction !== '' ? player.direction : 'stop';
             socket.emit(action, player.id);
