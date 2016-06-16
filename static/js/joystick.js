@@ -2,19 +2,6 @@ var Joystick;
 
 ;(function() {
 
-var sign = function(p1, p2, p3) {
-  return (p1.x - p3.x) * (p2.y - p3.y) - (p2.x - p3.x) * (p1.y - p3.y);
-};
-
-// Function which returns true if the first argued point is within
-// the subsequently describe triangle (following three points).
-var pointInTriangle = function(pt, v1, v2, v3) {
-  b1 = sign(pt, v1, v2) < 0;
-  b2 = sign(pt, v2, v3) < 0;
-  b3 = sign(pt, v3, v1) < 0;
-  return ((b1 == b2) && (b2 == b3));
-}
-
 // Between points.
 var distance = function(x2, x1, y2, y1) {
   return Math.sqrt(
@@ -30,18 +17,10 @@ var distance = function(x2, x1, y2, y1) {
 // Function that returns the coordinant from origin at a certain radial
 // distance given a second point.
 var secondPointByDistance = function(x, y, r) {
-  var atan = Math.atan(x / y);
-  if (y < 0) {
-    return {
-      x: -(r * Math.sin(atan)),
-      y: -(r * Math.cos(atan))
-    }
-  }
-  else {
-    return {
-      x: r * Math.sin(atan),
-      y: r * Math.cos(atan)
-    }
+  var ratio = r / Math.sqrt(Math.pow(x,2) + Math.pow(y,2));
+  return {
+    x: x*ratio, 
+    y: y*ratio
   }
 };
 
@@ -56,29 +35,19 @@ Joystick = function Joystick(events) {
   var zero = { x: 0, y: 0 };
   var direction = "";
 
-  // Calculates the diagnoal length of a quarter of
-  // a square, the whole of which could
-  // fit exactly outside of the invisible circle which limits the
-  // movement of the joystick. This number is used to create the
-  // coordinates for the four triangles that delimit the up, right, down,
-  // and left areas of the joysticks movement range. The `direction`
-  // method uses these coordinates to determine which area the joystick
-  // in.
-  var quadrantDiagonalLimit = limit * Math.sqrt(2);
-  var bottomLeft = { x: -quadrantDiagonalLimit, y: quadrantDiagonalLimit };
-  var bottomRight = { x: quadrantDiagonalLimit, y: quadrantDiagonalLimit };
-  var topLeft = { x: -quadrantDiagonalLimit, y: -quadrantDiagonalLimit };
-  var topRight = { x: quadrantDiagonalLimit, y: -quadrantDiagonalLimit };
   // Calculates if
   this.direction = function(point) {
-    if (pointInTriangle(point, zero, bottomLeft, bottomRight))
-      return 'down';
-    else if (pointInTriangle(point, zero, bottomLeft, topLeft))
-      return'left';
-    else if (pointInTriangle(point, zero, topRight, topLeft))
-      return'up';
-    else if (pointInTriangle(point, zero, topRight, bottomRight))
-      return 'right';
+    if (Math.abs(point.x) > Math.abs(point.y)) { // if x is dominant
+      if (point.x > 0)
+        return 'right';
+      else
+        return 'left';
+    } else {
+      if (point.y > 0)
+        return 'up';
+      else
+        return 'down';
+    }
   };
 
   this.move = function(x, y) {
